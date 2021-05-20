@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <launch>
-    <arg name="topic_imu"           default="/imu1/data_sync" />
-    <arg name="topic_lidar"           default="/velodyne_packets" />
-    <arg name="path_bag"            default="/home/liuzhiyang/data/test_data/LI-calib/Garage-01.bag" />
+    <arg name="topic_imu"           default="/INS_D/imu_data" />
+    <arg name="topic_lidar"           default="/rslidar1_points" />
+    <arg name="path_bag"            default="/home/liuzhiyang/data/test_data/LI-calib/changzhoufactory_2021-05-18-10-39-52.bag" />
     <arg name="bag_start"           default="1" />
     <arg name="bag_durr"            default="30" />
     <arg name="scan4map"            default="15" />

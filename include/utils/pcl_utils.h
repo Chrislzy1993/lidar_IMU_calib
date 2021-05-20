@@ -28,60 +28,73 @@
 #include <pcl/filters/passthrough.h>
 #include <Eigen/Eigen>
 
-namespace licalib {
-
+namespace licalib
+{
 typedef pcl::PointXYZI VPoint;
 typedef pcl::PointCloud<VPoint> VPointCloud;
 
 typedef pcl::PointXYZRGB colorPointT;
 typedef pcl::PointCloud<colorPointT> colorPointCloudT;
 
-struct PointXYZIT {
+struct PointXYZIT
+{
   PCL_ADD_POINT4D
   float intensity;
   double timestamp;
-  EIGEN_MAKE_ALIGNED_OPERATOR_NEW // make sure our new allocators are aligned
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW  // make sure our new allocators are aligned
 } EIGEN_ALIGN16;
 
+struct PointXYZIRTO
+{
+  PCL_ADD_POINT4D;  // quad-word XYZ
+  float intensity;  // < laser intensity reading
+  uint16_t ring;    // < laser ring number
+  double time_stamp;
+  float ori;
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW  // ensure proper alignment
+};
+
 inline void downsampleCloud(pcl::PointCloud<pcl::PointXYZI>::Ptr in_cloud,
-                            pcl::PointCloud<pcl::PointXYZI>::Ptr out_cloud,
-                            float in_leaf_size) {
+                            pcl::PointCloud<pcl::PointXYZI>::Ptr out_cloud, float in_leaf_size)
+{
   pcl::VoxelGrid<pcl::PointXYZI> sor;
   sor.setInputCloud(in_cloud);
   sor.setLeafSize((float)in_leaf_size, (float)in_leaf_size, (float)in_leaf_size);
   sor.filter(*out_cloud);
 }
-
 };
 
 POINT_CLOUD_REGISTER_POINT_STRUCT(licalib::PointXYZIT,
-                                  (float, x, x)
-                                  (float, y, y)
-                                  (float, z, z)
-                                  (float, intensity, intensity)
-                                  (double, timestamp, timestamp))
-
+                                  (float, x, x)(float, y, y)(float, z, z)(float, intensity,
+                                                                          intensity)(double, timestamp, timestamp))
 typedef licalib::PointXYZIT TPoint;
 typedef pcl::PointCloud<TPoint> TPointCloud;
 
-inline void TPointCloud2VPointCloud(TPointCloud::Ptr input_pc,
-                                    licalib::VPointCloud::Ptr output_pc) {
+POINT_CLOUD_REGISTER_POINT_STRUCT(licalib::PointXYZIRTO,
+                                  (float, x, x)(float, y, y)(float, z, z)(float, intensity, intensity)(
+                                      uint16_t, ring, ring)(double, time_stamp, time_stamp)(float, ori, ori))
+typedef licalib::PointXYZIRTO OPoint;
+typedef pcl::PointCloud<OPoint> OPointCloud;
+
+inline void TPointCloud2VPointCloud(TPointCloud::Ptr input_pc, licalib::VPointCloud::Ptr output_pc)
+{
   output_pc->header = input_pc->header;
   output_pc->height = input_pc->height;
   output_pc->width = input_pc->width;
   output_pc->is_dense = input_pc->is_dense;
   output_pc->resize(output_pc->width * output_pc->height);
-  for(int h = 0; h < input_pc->height; h++) {
-    for(int w = 0; w < input_pc->width; w++) {
+  for (int h = 0; h < input_pc->height; h++)
+  {
+    for (int w = 0; w < input_pc->width; w++)
+    {
       licalib::VPoint point;
-      point.x = input_pc->at(w,h).x;
-      point.y = input_pc->at(w,h).y;
-      point.z = input_pc->at(w,h).z;
-      point.intensity = input_pc->at(w,h).intensity;
-      output_pc->at(w,h) = point;
+      point.x = input_pc->at(w, h).x;
+      point.y = input_pc->at(w, h).y;
+      point.z = input_pc->at(w, h).z;
+      point.intensity = input_pc->at(w, h).intensity;
+      output_pc->at(w, h) = point;
     }
   }
 }
-
 
 #endif
