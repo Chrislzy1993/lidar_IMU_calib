@@ -40,40 +40,42 @@
 #include <fstream>
 #include <memory>
 
-namespace licalib {
-class TrajectoryManager {
+namespace licalib
+{
+class TrajectoryManager
+{
   using IMUSensor = kontiki::sensors::ConstantBiasImu;
   using LiDARSensor = kontiki::sensors::VLP16LiDAR;
 
-  using SO3TrajEstimator   = kontiki::TrajectoryEstimator<kontiki::trajectories::UniformSO3SplineTrajectory>;
-  using R3TrajEstimator    = kontiki::TrajectoryEstimator<kontiki::trajectories::UniformR3SplineTrajectory>;
+  using SO3TrajEstimator = kontiki::TrajectoryEstimator<kontiki::trajectories::UniformSO3SplineTrajectory>;
+  using R3TrajEstimator = kontiki::TrajectoryEstimator<kontiki::trajectories::UniformR3SplineTrajectory>;
   using SplitTrajEstimator = kontiki::TrajectoryEstimator<kontiki::trajectories::SplitTrajectory>;
 
-  using GyroMeasurement    = kontiki::measurements::GyroscopeMeasurement<IMUSensor>;
-  using AccelMeasurement   = kontiki::measurements::AccelerometerMeasurement<IMUSensor>;
-  using SurfMeasurement         = kontiki::measurements::LiDARSurfelPoint<LiDARSensor>;
+  using GyroMeasurement = kontiki::measurements::GyroscopeMeasurement<IMUSensor>;
+  using AccelMeasurement = kontiki::measurements::AccelerometerMeasurement<IMUSensor>;
+  using SurfMeasurement = kontiki::measurements::LiDARSurfelPoint<LiDARSensor>;
 
-  using OrientationMeasurement  = kontiki::measurements::OrientationMeasurement;
-  using PositionMeasurement     = kontiki::measurements::PositionMeasurement;
+  using OrientationMeasurement = kontiki::measurements::OrientationMeasurement;
+  using PositionMeasurement = kontiki::measurements::PositionMeasurement;
 
 public:
   typedef std::shared_ptr<TrajectoryManager> Ptr;
   using Result = std::unique_ptr<kontiki::trajectories::TrajectoryEvaluation<double>>;
 
-  explicit TrajectoryManager(double start_time, double end_time,
-                             double knot_distance = 0.02,
+  explicit TrajectoryManager(double start_time, double end_time, double knot_distance = 0.02,
                              double time_offset_padding = 0)
-          : time_offset_padding_(time_offset_padding),
-            map_time_(0),
-            imu_(std::make_shared<IMUSensor>()),
-            lidar_(std::make_shared<LiDARSensor>()),
-            calib_param_manager(std::make_shared<CalibParamManager>()) {
+    : time_offset_padding_(time_offset_padding)
+    , map_time_(0)
+    , imu_(std::make_shared<IMUSensor>())
+    , lidar_(std::make_shared<LiDARSensor>())
+    , calib_param_manager(std::make_shared<CalibParamManager>())
+  {
     assert(knot_distance > 0 && "knot_distance should be lager than 0");
 
     double traj_start_time = start_time - time_offset_padding;
     double traj_end_time = end_time + time_offset_padding;
-    traj_ = std::make_shared<kontiki::trajectories::SplitTrajectory>
-            (knot_distance, knot_distance, traj_start_time, traj_start_time);
+    traj_ = std::make_shared<kontiki::trajectories::SplitTrajectory>(knot_distance, knot_distance, traj_start_time,
+                                                                     traj_start_time);
     initialTrajTo(traj_end_time);
   }
 
@@ -83,50 +85,48 @@ public:
 
   void initialSO3TrajWithGyro();
 
-  void trajInitFromSurfel(SurfelAssociation::Ptr surfels_association,
-                          bool opt_time_offset_ = false);
+  void trajInitFromSurfel(SurfelAssociation::Ptr surfels_association, bool opt_time_offset_ = false);
 
   bool evaluateIMUPose(double imu_time, int flags, Result& result) const;
 
-  bool evaluateLidarPose(double lidar_time, Eigen::Quaterniond& q_LtoG,
-                         Eigen::Vector3d& p_LinG) const;
+  bool evaluateLidarPose(double lidar_time, Eigen::Quaterniond& q_LtoG, Eigen::Vector3d& p_LinG) const;
 
-  bool evaluateLidarRelativeRotation(double lidar_time1, double lidar_time2,
-                                     Eigen::Quaterniond& q_L2toL1) const;
+  bool evaluateLidarRelativeRotation(double lidar_time1, double lidar_time2, Eigen::Quaterniond& q_L2toL1) const;
 
-  CalibParamManager::Ptr getCalibParamManager() const {
+  bool evaluateIMUAtt(double imu_time, Eigen::Quaterniond& result) const;
+
+  CalibParamManager::Ptr getCalibParamManager() const
+  {
     return calib_param_manager;
   }
 
-  double get_map_time() const {
+  double get_map_time() const
+  {
     return map_time_;
   }
 
   /// Access the trajectory
-  std::shared_ptr<kontiki::trajectories::SplitTrajectory> getTrajectory() const {
+  std::shared_ptr<kontiki::trajectories::SplitTrajectory> getTrajectory() const
+  {
     return traj_;
   }
 
 private:
   template <typename TrajectoryModel>
-  void addGyroscopeMeasurements(
-          std::shared_ptr<kontiki::TrajectoryEstimator<TrajectoryModel>> estimator);
+  void addGyroscopeMeasurements(std::shared_ptr<kontiki::TrajectoryEstimator<TrajectoryModel>> estimator);
 
   template <typename TrajectoryModel>
-  void addAccelerometerMeasurement(
-          std::shared_ptr<kontiki::TrajectoryEstimator<TrajectoryModel>> estimator);
+  void addAccelerometerMeasurement(std::shared_ptr<kontiki::TrajectoryEstimator<TrajectoryModel>> estimator);
 
   template <typename TrajectoryModel>
-  void addSurfMeasurement(
-          std::shared_ptr<kontiki::TrajectoryEstimator<TrajectoryModel>> estimator,
-          const SurfelAssociation::Ptr surfel_association);
+  void addSurfMeasurement(std::shared_ptr<kontiki::TrajectoryEstimator<TrajectoryModel>> estimator,
+                          const SurfelAssociation::Ptr surfel_association);
 
   template <typename TrajectoryModel>
-  void addCallback(
-          std::shared_ptr<kontiki::TrajectoryEstimator<TrajectoryModel>> estimator);
+  void addCallback(std::shared_ptr<kontiki::TrajectoryEstimator<TrajectoryModel>> estimator);
 
-  void printErrorStatistics(const std::string& intro, bool show_gyro = true,
-                            bool show_accel = true, bool show_lidar = true) const;
+  void printErrorStatistics(const std::string& intro, bool show_gyro = true, bool show_accel = true,
+                            bool show_lidar = true) const;
 
   double map_time_;
   double time_offset_padding_;
@@ -140,9 +140,9 @@ private:
 
   Eigen::aligned_vector<Eigen::Vector3d> closest_point_vec_;
 
-  std::vector< std::shared_ptr<GyroMeasurement>>  gyro_list_;
-  std::vector< std::shared_ptr<AccelMeasurement>> accel_list_;
-  std::vector< std::shared_ptr<SurfMeasurement>>  surfelpoint_list_;
+  std::vector<std::shared_ptr<GyroMeasurement>> gyro_list_;
+  std::vector<std::shared_ptr<AccelMeasurement>> accel_list_;
+  std::vector<std::shared_ptr<SurfMeasurement>> surfelpoint_list_;
 };
 }
 

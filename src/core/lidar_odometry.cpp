@@ -42,6 +42,18 @@ pclomp::NormalDistributionsTransform<VPoint, VPoint>::Ptr LiDAROdometry::ndtInit
   return ndt_omp;
 }
 
+void transform2Pose(const Eigen::Matrix4d& transform, std::vector<double>& pose)
+{
+  pose.resize(6);
+  Eigen::Vector3d angle = transform.block<3, 3>(0, 0).eulerAngles(0, 1, 2);
+  pose[0] = transform(0, 3);
+  pose[1] = transform(1, 3);
+  pose[2] = transform(2, 3);
+  pose[3] = angle(0);
+  pose[4] = angle(1);
+  pose[5] = angle(2);
+}
+
 void LiDAROdometry::feedScan(double timestamp, VPointCloud::Ptr cur_scan, Eigen::Matrix4d pose_predict,
                              const bool update_map)
 {
@@ -50,17 +62,25 @@ void LiDAROdometry::feedScan(double timestamp, VPointCloud::Ptr cur_scan, Eigen:
   odom_cur.pose = Eigen::Matrix4d::Identity();
 
   VPointCloud::Ptr scan_in_target(new VPointCloud());
+  Eigen::Matrix4d T_LtoM_predict;
   if (map_cloud_->empty())
   {
     scan_in_target = cur_scan;
   }
   else
   {
-    Eigen::Matrix4d T_LtoM_predict = odom_data_.back().pose * pose_predict;
+    T_LtoM_predict = odom_data_.back().pose * pose_predict;
     registration(cur_scan, T_LtoM_predict, odom_cur.pose, scan_in_target);
   }
   odom_data_.push_back(odom_cur);
 
+  std::vector<double> predit_pose, ndt_pose;
+  transform2Pose(T_LtoM_predict, predit_pose);
+  transform2Pose(odom_cur.pose, ndt_pose);
+  // std::cout << "predit pose: " << predit_pose[0] << " " << predit_pose[1] << " " << predit_pose[2] << " "
+  //                              << predit_pose[3] << " " << predit_pose[4] << " " << predit_pose[5] << std::endl;
+  // std::cout << "ndt pose: " << ndt_pose[0] << " " << ndt_pose[1] << " " << ndt_pose[2] << " "
+  //                           << ndt_pose[3] << " " << ndt_pose[4] << " " << ndt_pose[5] << std::endl;
   if (update_map)
   {
     updateKeyScan(cur_scan, odom_cur);

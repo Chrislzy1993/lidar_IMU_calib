@@ -46,6 +46,7 @@ struct IMUData
   double timestamp;
   Eigen::Matrix<double, 3, 1> gyro;
   Eigen::Matrix<double, 3, 1> accel;
+  Eigen::Quaterniond attitude;
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
@@ -129,7 +130,6 @@ public:
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dis(-0.02, 0.02);
     std::uniform_real_distribution<> dis2(-2.0, 2.0);
-
     for (rosbag::MessageInstance const m : view)
     {
       const std::string& topic = m.getTopic();
@@ -167,11 +167,12 @@ public:
                                                         imu_msg->linear_acceleration.z);
         data_->imu_data_.back().gyro =
             Eigen::Vector3d(imu_msg->angular_velocity.x, imu_msg->angular_velocity.y, imu_msg->angular_velocity.z);
+        data_->imu_data_.back().attitude = Eigen::Quaterniond(imu_msg->orientation.w, imu_msg->orientation.x,
+                                                              imu_msg->orientation.y, imu_msg->orientation.z);
 
         // data_->imu_data_.back().accel = Eigen::Vector3d(
         //         dis2(gen), dis2(gen),
         //         imu_msg->linear_acceleration.z);
-
         // data_->imu_data_.back().gyro = Eigen::Vector3d(
         //         dis(gen), dis(gen),
         //         imu_msg->angular_velocity.z / 3.0);

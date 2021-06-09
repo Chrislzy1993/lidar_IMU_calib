@@ -21,6 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
   velodyne_msgs
   ndt_omp
   tf
+  tf_conversions
   pcl_ros
 )
 

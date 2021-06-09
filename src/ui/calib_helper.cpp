@@ -27,6 +27,8 @@
 #include <fstream>
 #include <sstream>
 
+#include <tf_conversions/tf_eigen.h>
+
 namespace licalib
 {
 CalibrHelper::CalibrHelper(ros::NodeHandle& nh)
@@ -52,7 +54,7 @@ CalibrHelper::CalibrHelper(ros::NodeHandle& nh)
   nh.param<double>("ndtResolution", ndt_resolution_, 0.5);
   nh.param<double>("time_offset_padding", time_offset_padding, 0.015);
   nh.param<double>("knot_distance", knot_distance, 0.02);
-  knot_distance = 0.002;
+  std::cout << "knot_distance: " << knot_distance << std::endl;
 
   //// debug
   // bag_path_ = "/home/liuzhiyang/data/test_data/LI-calib/changzhoufactory_2021-05-18-10-39-52.bag";
@@ -116,6 +118,16 @@ bool CalibrHelper::createCacheFolder(const std::string& bag_path)
   return true;
 }
 
+std::vector<double> q2eular(const Eigen::Quaterniond& q)
+{
+  tf::Quaternion q_tf;
+  tf::quaternionEigenToTF(q, q_tf);
+  double roll = 0.0, pitch = 0.0, yaw = 0.0;
+  tf::Matrix3x3(q_tf).getRPY(roll, pitch, yaw);
+  std::vector<double> eular{ roll, pitch, yaw };
+  return eular;
+}
+
 void CalibrHelper::Initialization()
 {
   if (Start != calib_step_)
@@ -123,9 +135,8 @@ void CalibrHelper::Initialization()
     ROS_WARN("[Initialization] Need status: Start.");
     return;
   }
-  std::cout << "Initialization" << std::endl;
   // imu数据处理： 拟合so3轨迹(旋转部分)
-  // std::string file_name = "/home/liuzhiyang/Desktop/imu.txt";
+  // std::string file_name = "/home/liuzhiyang/Desktop/data/imu.txt";
   // std::ofstream file_writer(file_name, std::ios_base::out | std::ios_base::trunc);
   // file_writer << std::fixed << std::setprecision(8);
   for (const auto& imu_data : dataset_reader_->get_imu_data())
@@ -142,6 +153,45 @@ void CalibrHelper::Initialization()
   traj_manager_->initialSO3TrajWithGyro();
 
   // debug: save traj result
+  std::string file_name = "/home/liuzhiyang/Desktop/data/imu_att.txt";
+  std::ofstream file_writer(file_name, std::ios_base::out | std::ios_base::trunc);
+  file_writer << std::fixed << std::setprecision(5);
+  size_t imu_size = dataset_reader_->get_imu_data().size();
+  std::cout << "imu data is : " << imu_size << std::endl;
+  bool first_flag = true;
+  Eigen::Quaterniond first_att;
+  for (const auto& imu_data : dataset_reader_->get_imu_data())
+  {
+    double imu_time = imu_data.timestamp;
+    Eigen::Quaterniond data_att;
+    if (first_flag)
+    {
+      first_att = imu_data.attitude;
+      data_att = Eigen::Quaterniond::Identity();
+      first_flag = false;
+    }
+    else
+    {
+      data_att = first_att.conjugate() * imu_data.attitude;
+    }
+    auto data_euler = q2eular(data_att);
+    Eigen::Quaterniond traj_att;
+    if (!traj_manager_->evaluateIMUAtt(imu_time, traj_att))
+    {
+      std::cout << "fail to find imu att" << std::endl;
+      return;
+    }
+    auto traj_euler = q2eular(traj_att);
+
+    if (file_writer.is_open())
+    {
+      file_writer << data_euler[0] * 180 / M_PI << " " << data_euler[1] * 180 / M_PI << " "
+                  << data_euler[2] * 180 / M_PI << " " << traj_euler[0] * 180 / M_PI << " "
+                  << traj_euler[1] * 180 / M_PI << " " << traj_euler[2] * 180 / M_PI << std::endl;
+    }
+  }
+  file_writer.close();
+  std::cout << "write file done!" << std::endl;
 
   // // lidar数据处理：ndt匹配
   // for(const TPointCloud& raw_scan: dataset_reader_->get_scan_data()) {

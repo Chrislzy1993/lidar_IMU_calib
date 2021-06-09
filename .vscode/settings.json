@@ -51,6 +51,16 @@
     "cinttypes": "cpp",
     "utility": "cpp",
     "typeindex": "cpp",
-    "typeinfo": "cpp"
+    "typeinfo": "cpp",
+    "core": "cpp",
+    "numericaldiff": "cpp",
+    "codecvt": "cpp",
+    "condition_variable": "cpp",
+    "unordered_set": "cpp",
+    "optional": "cpp",
+    "slist": "cpp",
+    "future": "cpp",
+    "mutex": "cpp",
+    "valarray": "cpp"
   }
 }
